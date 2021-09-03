@@ -1,0 +1,118 @@
+redhat-upgrade-dracut - initramfs environment for RHEL Upgrades
+========================================================
+Will Woods <wwoods@redhat.com>
+
+This is 'redhat-upgrade-dracut', the initramfs environment for RHEL Upgrades.
+
+Components
+----------
+
+It has the following parts:
+
+`90system-upgrade/`
+~~~~~~~~~~~~~~~~~~~
+This module provides a (distro-neutral) framework for running upgrades.
+
+* Adds three dracut hooks: `upgrade-pre`, `upgrade`, and `upgrade-post`.
+* Adds `upgrade.target`, which runs the above hooks (in order)
+* Automatically includes any other modules named `system-upgrade-*`
+* 'BONUS:' adds system-upgrade-shell.service
+
+`85system-upgrade-redhat/`
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+This is the RHEL 'system-upgrade' implementation.
+
+* Includes upgrade tool, SELinux policy, plymouth, etc.
+* Copies initramfs to `$NEWROOT/system-upgrade-root`
+* Runs 'system-upgrade-redhat' binary in the `upgrade` hook
+* Save log & journal to `/var/log/upgrade.{log,journal}` before reboot
+
+`system-upgrade-redhat.c`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+The actual upgrade tool.
+
+* Upgrades system using packages from `$UPGRADELINK`
+* Sends progress updates to `plymouthd`
+* Sends status output to console + journal
+
+The actual upgrade setup is handled in the main 'redhat-upgrade-tool' package, which can be
+found here: https://github.com/dashea/redhat-upgrade-tool
+
+Building
+--------
+
+You'll want to build the initramfs on the _newer_ distro version.
+
+. Install build requirements
+    * 'rpm-devel' >= 4.10.0
+    * 'plymouth-devel' >= 0.8.6
+    * 'systemd' >= 195
+    * 'glib2-devel'
+. Install dracut modules
+    * `make install`, or
+        .. `make archive`
+        .. `rpmbuild -ta redhat-upgrade-dracut*.tar.xz`
+        .. +rpm -ivh '[freshly-built RPMs]'+
+. Build upgrade initramfs
+    * `OLDTHEME=$(plymouth-set-default-theme)`
+    * `plymouth-set-default-theme redhat-upgrade-tool`
+    * `dracut --add system-upgrade upgrade.img`
+    * `plymouth-set-default-theme $OLDTHEME`
+
+Pre-requisite RPMs
+------------------
+$ rpm -qa|grep dracut
+dracut-sshd-0.6.2-2.el7.noarch
+dracut-033-572.el7.x86_64
+dracut-network-033-572.el7.x86_64
+dracut-config-generic-033-572.el7.x86_64
+dracut-tools-033-572.el7.x86_64
+anaconda-dracut-21.48.22.159-1.el7.x86_64
+dracut-config-rescue-033-572.el7.x86_64
+redhat-upgrade-dracut-plymouth-0.8.10-1.el7.noarch
+redhat-upgrade-dracut-0.8.10-1.el7.x86_64
+
+Where dracut-sshd is an important one to have Secure Shell daemon on the
+upgrade.img. Perfect, to connect to the system while busy with the upgrade so
+we can see what is happening, e.g. with journatctl -f
+
+$ yum info dracut-sshd
+Loaded plugins: search-disabled-repos
+Installed Packages
+Name        : dracut-sshd
+Arch        : noarch
+Version     : 0.6.2
+Release     : 2.el7
+Size        : 26 k
+Repo        : installed
+From repo   : copr:copr.fedorainfracloud.org:gsauthof:dracut-sshd
+Summary     : Provide SSH access to initramfs early user space
+URL         : https://github.com/gsauthof/dracut-sshd
+License     : GPLv3+
+Description : This Dracut module integrates the OpenSSH sshd into your
+            : initramfs. It allows for remote unlocking of a fully encrypted
+            : root filesystem and remote access to the Dracut emergency shell
+            : (i.e. early userspace).
+
+$ cat /etc/yum.repos.d/dracut-sshd.repo
+[copr:copr.fedorainfracloud.org:gsauthof:dracut-sshd]
+name=Copr repo for dracut-sshd owned by gsauthof
+baseurl=https://download.copr.fedorainfracloud.org/results/gsauthof/dracut-sshd/epel-7-$basearch/
+type=rpm-md
+skip_if_unavailable=True
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/gsauthof/dracut-sshd/pubkey.gpg
+repo_gpgcheck=0
+enabled=1
+enabled_metadata=1
+
+$ sudo yum install -y dracut-sshd
+$ sudo yum install -y anaconda-dracut redhat-upgrade-dracut \
+  redhat-upgrade-dracut-plymouth dracut-config-generic dracut-tools
+
+$ sudo mkdir -m 750 /etc/dracut-sshd
+# cat >/etc/dracut-sshd/authorized_keys
+*** paste your SSH public key here ***
+^D
+
+/// vim: set syn=asciidoc tw=78:
