@@ -1,11 +1,17 @@
 redhat-upgrade-dracut - initramfs environment for RHEL Upgrades
 ========================================================
-Will Woods <wwoods@redhat.com>
+Will Woods <wwoods@redhat.com> : redhat-upgrade-dracut
+Gratien D'haese <gratien.dhaese@gmail.com> : redhat-upgrade-dracut with ssh
+extention
 
 This is 'redhat-upgrade-dracut', the initramfs environment for RHEL Upgrades.
 
+Be aware that the original 'redhat-upgrade-dracut' project is archived.
+
 Components
 ----------
+
+Run this on a RHEL 7.9 systems with the latest patches installed.
 
 It has the following parts:
 
@@ -61,6 +67,7 @@ You'll want to build the initramfs on the _newer_ distro version.
 
 Pre-requisite RPMs
 ------------------
+```bash
 $ rpm -qa|grep dracut
 dracut-sshd-0.6.2-2.el7.noarch
 dracut-033-572.el7.x86_64
@@ -114,5 +121,6 @@ $ sudo mkdir -m 750 /etc/dracut-sshd
 # cat >/etc/dracut-sshd/authorized_keys
 *** paste your SSH public key here ***
 ^D
+```
 
 /// vim: set syn=asciidoc tw=78:
